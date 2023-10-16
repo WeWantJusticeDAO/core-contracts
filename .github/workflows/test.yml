@@ -1,0 +1,50 @@
+name: test
+
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+
+env:
+    FOUNDRY_PROFILE: ci
+
+jobs:
+    foundry:
+        strategy:
+            fail-fast: true
+
+        name: Foundry project
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: nightly
+
+            - name: Run Forge build
+              run: |
+                  forge --version
+                  forge build
+              id: build
+
+            - name: Run Forge tests
+              run: |
+                  forge test
+              id: forge-test
+
+            - name: Run Forge coverage
+              run: |
+                  forge coverage --report lcov
+                  sudo apt-get install lcov
+                  lcov --remove lcov.info  -o lcov.info 'test/*' 'contracts/lib/*' 'contracts/mocks/*' 'contracts/dependencies/*' 'contracts/connectors/InchV5.sol' 'contracts/connectors/KyberV2.sol' 'contracts/connectors/Paraswap.sol' 'contracts/connectors/polygon/*' 
+              id: forge-coverage
+
+            - name: Upload coverage reports to Codecov
+              uses: codecov/codecov-action@v3
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
